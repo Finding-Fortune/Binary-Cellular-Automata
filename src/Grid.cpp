@@ -82,7 +82,7 @@ void Grid::RefreshCaveNoise()
                 (float)(chunkCoordX * 64), (float)(chunkCoordZ * 64), // Offsets
                 64, 64,                                              // Counts
                 frequency, frequency,                                // Step sizes (X and Y)
-                1337                                                 // Seed
+                seed                                                 // Seed
             );
             // Map noise to your bitmask
             for (uint64_t x = 0; x < 64; ++x) 
