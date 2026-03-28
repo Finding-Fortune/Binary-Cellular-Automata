@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <array>
+#include <vector>
 
 
 
@@ -17,13 +18,15 @@ public:
     void RefreshCaveNoise();
 
     void CaveCA(const int chunkCoordX, const int chunkCoordZ);
+    void CaveCAIsolated(const int chunkCoordX, const int chunkCoordZ);
     
     void DrawGridDebug();
 
-    static constexpr int gridWidth = 2;
-    static constexpr int gridDepth = 2;
+    static constexpr int tilesInChunkAxis = 64;
 
-    std::array<std::array<std::array<uint64_t, 64>, gridDepth>, gridWidth> grid;
+    int gridLength = 4;
+
+    std::vector<std::vector<std::array<uint64_t, 64>>> grid;
 
     int seed = 0;
     int CAiterations = 3;
