@@ -7,14 +7,9 @@
 
 int main() 
 {
-    const int gridSizeX = 64;
-    const int gridSizeZ = 64;
-
-    const int tileSize = 12;
-    
     InitWindow(1920, 1080, "Tile Grid");
     SetWindowState(FLAG_WINDOW_MAXIMIZED | FLAG_WINDOW_RESIZABLE);
-    SetWindowPosition(0, 40);
+    SetWindowPosition(0, 25);
 
     Grid grid;
 

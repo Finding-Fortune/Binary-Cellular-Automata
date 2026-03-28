@@ -20,6 +20,22 @@ static uint64_t SpatialHash(uint64_t x)
 
 
 
+uint64_t Grid::SpatialHash(uint64_t x, uint64_t z) 
+{
+    x += seed;
+    z += seed;
+
+    uint64_t h = x + 0x9e3779b97f4a7c15ULL + (z << 6) + (z >> 2);
+    
+    h ^= z + 0x517cc1b727220a95ULL; 
+    h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
+    h = (h ^ (h >> 31));
+    return h;
+}
+
+
+
 Grid::Grid()
 {
     RefreshCaveNoise();
@@ -31,23 +47,28 @@ void Grid::RefreshCaveNoise()
 {
     InitCaveNoise();
 
-    for (int i = 0; i < CAiterations; ++i)
+    for(int chunkCoordX = 0; chunkCoordX < gridWidth; ++chunkCoordX)
+    for(int chunkCoordZ = 0; chunkCoordZ < gridDepth; ++chunkCoordZ)
     {
-        CaveCA();
+        for (int i = 0; i < CAiterations; ++i)
+        {
+            CaveCA(chunkCoordX, chunkCoordZ);
+        }
     }
 }
 
 
 
-void Grid::CaveCA() 
+void Grid::CaveCA(const int chunkCoordX, const int chunkCoordZ) 
 {
+    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
     uint64_t temp[64] = {0};
 
     for (int x = 0; x < 64; ++x) 
     {
-        const uint64_t L = (x > 0)   ? columns[x-1] : ~0ULL;  // border = solid walls
-        const uint64_t C = columns[x];
-        const uint64_t R = (x < 63)  ? columns[x+1] : ~0ULL;
+        const uint64_t L = (x > 0)   ? chunk[x-1] : ~0ULL;  // border = solid walls
+        const uint64_t C = chunk[x];
+        const uint64_t R = (x < 63)  ? chunk[x+1] : ~0ULL;
 
         // 8 neighbor masks + self (standard Moore neighborhood, 9 cells total).
         // Shifts handle vertical neighbors; border walls are injected with OR.
@@ -95,7 +116,7 @@ void Grid::CaveCA()
     // Write back (or use pointer swap in real engine code).
     for (int x = 0; x < 64; ++x) 
     {
-        columns[x] = temp[x];
+        chunk[x] = temp[x];
     }
 }
 
@@ -103,9 +124,16 @@ void Grid::CaveCA()
 
 void Grid::InitCaveNoise() 
 {
-    for (int x = 0; x < 64; ++x) 
+    for(uint64_t chunkCoordX = 0; chunkCoordX < gridWidth; ++chunkCoordX)
+    for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridDepth; ++chunkCoordZ)
     {
-        columns[x] = SpatialHash(x);
+        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+        for (uint64_t x = 0; x < 64; ++x) 
+        {
+            // chunk[x] = SpatialHash(x + 64 * chunkCoordX, 64 * chunkCoordZ);
+            // chunk[x] = SpatialHash(x + chunkCoordX, chunkCoordZ * 64);
+            chunk[x] = SpatialHash(x + chunkCoordX, chunkCoordZ);
+        }
     }
 }
 
@@ -114,51 +142,87 @@ void Grid::InitCaveNoise()
 void Grid::DrawGridDebug()
 {
     DrawText(FMT("CA Iterations: {}", CAiterations), 10, 35, 36, RAYWHITE);
+    DrawText(FMT("Seed: {}", seed), 10, 75, 36, RAYWHITE);
 
-    static Timer CAChangeTimer(0.5);
+    static Timer CAChangeTimer(0.25);
+
+    // Increase, decrease seed
+    if (IsKeyPressed(KEY_P))
+    {
+        if(CAChangeTimer.HasElapsed()) 
+        {
+            seed++;
+            RefreshCaveNoise();
+            return;
+        }
+    }
+
+    if (IsKeyPressed(KEY_O))
+    {
+        if(CAChangeTimer.HasElapsed())
+        {
+            seed--;
+            RefreshCaveNoise();
+            return;
+        }
+    }
 
     // Increase, decrease iterations
-    if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_KP_ADD))
+    if (IsKeyPressed(KEY_EQUAL))
     {
         if(CAChangeTimer.HasElapsed()) 
         {
             CAiterations++;
             RefreshCaveNoise();
+            return;
         }
     }
 
-    if (IsKeyPressed(KEY_MINUS) || IsKeyPressed(KEY_KP_SUBTRACT))
+    if (IsKeyPressed(KEY_MINUS))
     {
         if(CAChangeTimer.HasElapsed())
-            if (CAiterations >= 2)
+            if (CAiterations >= 1)
             {
                 CAiterations--;
                 RefreshCaveNoise();
+                return;
             }
     }
 }
 
 
 
-void Grid::DrawGrid()
-{
-    const int gridSizeX = 64;
-    const int gridSizeZ = 64;
-    const int tileSize = GetScreenHeight() / gridSizeZ;
-    const int totalWidth = gridSizeX * tileSize;
-    const int totalHeight = gridSizeZ * tileSize;
-    const int offsetX = (GetScreenWidth() - totalWidth) / 2;
-    const int offsetY = (GetScreenHeight() - totalHeight) / 2 - 5;
+void Grid::DrawGrid() 
+{ 
+    const int chunkTiles = 64; 
+    const int tileSize = GetScreenHeight() / (chunkTiles * gridDepth) - 1; // -1 for small gap if wanted
+    
+    const int gap = 2;
+    const int chunkPxSize = chunkTiles * tileSize;
+    
+    const int totalWidth  = gridWidth  * (chunkPxSize + gap) - gap;
+    const int totalHeight = gridDepth * (chunkPxSize + gap) - gap;
+    
+    const int startScreenX = (GetScreenWidth()  - totalWidth)  / 2;
+    const int startScreenY = (GetScreenHeight() - totalHeight) / 2;
 
-    for (int x = 0; x < gridSizeX; x++)
-    for (int z = 0; z < gridSizeZ; z++) 
-    {
-        // Checkerboard: white if (x + y) is even, black otherwise
-        const uint64_t result = glm::bitfieldExtract(columns[x], z, 1);
-        Color tileColor = (result == 1) ? WHITE : BLACK;
-        
-        DrawRectangle(offsetX + x * tileSize, offsetY + z * tileSize, tileSize, tileSize, tileColor);
-    }
+    for(int cz = 0; cz < gridDepth; ++cz) 
+    for(int cx = 0; cx < gridWidth; ++cx) 
+    { 
+        std::array<uint64_t, 64>& chunk = grid[cx][cz]; 
+
+        for (int localX = 0; localX < chunkTiles; ++localX) 
+        for (int localZ = 0; localZ < chunkTiles; ++localZ) 
+        { 
+            const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 1; 
+            Color tileColor = isWall ? BLACK : WHITE; 
+            
+            int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize;
+            int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize;
+            
+            DrawRectangle(screenX, screenY, tileSize, tileSize, tileColor); 
+        } 
+    } 
 }
 
 
