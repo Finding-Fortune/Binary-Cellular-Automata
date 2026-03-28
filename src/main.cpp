@@ -23,8 +23,8 @@ int main()
         BeginDrawing();
         ClearBackground(DARKGRAY);
 
-        grid.DrawGridDebug();
         grid.DrawGrid();
+        grid.DrawGridDebug();
 
         EndDrawing();
     }

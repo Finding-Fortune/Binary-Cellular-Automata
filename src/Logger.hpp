@@ -110,7 +110,7 @@ namespace debug
     inline std::string str(const double number, const int precision)
     {
         std::ostringstream oss;
-        oss << std::fixed << std::setprecision(5) << number;
+        oss << std::fixed << std::setprecision(precision) << number;
         return oss.str();
     }
 
