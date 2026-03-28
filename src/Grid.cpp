@@ -5,6 +5,10 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/bitfield.hpp>
+#include <algorithm>
+#include <random>
+#include <numeric>
+#include "FastNoise/FastNoise.h"
 
 
 
@@ -40,21 +44,72 @@ void Grid::RefreshCaveNoise()
     for (int i = 0; i < gridLength; ++i) 
         grid[i] = std::vector<std::array<uint64_t, 64>>(gridLength);
 
-    InitCaveNoise();
+    double startTime = GetTime();
 
-    for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
-    for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
+    // Cellular Automata
+    if(renderCACaves)
     {
-        for (int i = 0; i < CAiterations; ++i)
+        InitCaveNoise();
+
+        for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
+        for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
         {
-            CaveCA(chunkCoordX, chunkCoordZ);
+            for (int i = 0; i < CAiterations; ++i)
+            {
+                CaveCA(i, chunkCoordX, chunkCoordZ);
+            }
         }
     }
+    // Fastnoise2
+    else 
+    {
+        InitCaveNoise();
+        
+        // static const auto noiseGen = FastNoise::NewFromEncodedNodeTree(
+        //     "EwCamZk+GgABEQACAAAAAADgQBAAAACIQR8AFgABAAAACwADAAAAAgAAAAMAAAAEAAAAAAAAAD8BFAD//wAAAAAAAD8AAAAAPwAAAAA/AAAAAD8BFwAAAIC/AACAPz0KF0BSuB5AEwAAAKBABgAAj8J1PACamZk+AAAAAAAA4XoUPw=="
+        // );
+        auto simplex = FastNoise::New<FastNoise::Simplex>();
+        std::vector<float> noiseBuffer(64 * 64);
+        static const float frequency = 20.1f;
+
+        for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
+        for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
+        {
+            std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+
+            simplex->GenUniformGrid2D(
+                noiseBuffer.data(),
+                (float)(chunkCoordX * 64), (float)(chunkCoordZ * 64), // Offsets
+                64, 64,                                              // Counts
+                frequency, frequency,                                // Step sizes (X and Y)
+                1337                                                 // Seed
+            );
+            // Map noise to your bitmask
+            for (uint64_t x = 0; x < 64; ++x) 
+            {
+                uint64_t columnMask = 0;
+                for (uint64_t z = 0; z < 64; ++z) 
+                {
+                    // Access buffer: index = z * width + x
+                    float noiseVal = noiseBuffer[z * 64 + x];
+
+                    // Thresholding: If > 0.5, set the bit at height 'z'
+                    if (noiseVal > 0.1f) {
+                        columnMask |= (1ULL << z);
+                    }
+                }
+                chunk[x] = columnMask;
+            }
+        }
+    }
+
+    double endTime = GetTime();
+    generationTime = endTime - startTime;
 }
 
 
 
-void Grid::CaveCA(const int chunkCoordX, const int chunkCoordZ) 
+void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
 {
     std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
     uint64_t temp[64] = {0};
@@ -149,8 +204,15 @@ void Grid::CaveCA(const int chunkCoordX, const int chunkCoordZ)
         const uint64_t b1 = count[1];
         const uint64_t b2 = count[2];
         const uint64_t b3 = count[3];
-        temp[x] = b3 | (b2 & b1);
-        // temp[x] = ~temp[x];
+        temp[x] = b3 | (b2 & (b1 | b0));
+
+        // temp[x] = b3 | (b2 & b1 & b0);
+
+        // bool even = (iteration % 2 == 0);
+        // uint64_t ge5 = b3 | (b2 & (b1 | b0));
+        // uint64_t ge6 = b3 | (b2 & b1);
+
+        // temp[x] = even ? ge5 : ge6;
     }
 
     for (int x = 0; x < 64; ++x) 
@@ -161,97 +223,49 @@ void Grid::CaveCA(const int chunkCoordX, const int chunkCoordZ)
 
 
 
-void Grid::InitCaveNoise() 
-{
-    for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
-    for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
-    {
-        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
-        for (uint64_t x = 0; x < 64; ++x) 
-        {
-            // uint64_t hash = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
-            // chunk[x] = hash;
-
-            uint64_t h1 = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
-            uint64_t h2 = SpatialHash(x + 410 + chunkCoordX * 64, x + 420 - chunkCoordZ * 64);
-            uint64_t h3 = SpatialHash(x - 430 + chunkCoordX * 64, x - 940 - chunkCoordZ * 64);
-
-            chunk[x] = h1 | (h2 & h3);
+static std::vector<uint64_t> GenerateSparseMasks(int count, int activeBits, uint64_t seed) {
+    std::vector<uint64_t> masks;
+    std::mt19937_64 rng(seed);
+    
+    for (int i = 0; i < count; ++i) {
+        int positions[64];
+        for (int j = 0; j < 64; ++j) positions[j] = j;
+        
+        // Fisher-Yates shuffle to pick random bit indices
+        for (int j = 63; j > 0; --j) {
+            std::uniform_int_distribution<int> dist(0, j);
+            int k = dist(rng);
+            int temp = positions[j];
+            positions[j] = positions[k];
+            positions[k] = temp;
         }
+        
+        uint64_t mask = 0;
+        for (int j = 0; j < activeBits; ++j) {
+            mask |= (1ULL << positions[j]);
+        }
+        masks.push_back(mask);
     }
+    return masks;
 }
 
 
 
-void Grid::DrawGridDebug()
+void Grid::InitCaveNoise() 
 {
-    DrawText("Walls are Black", 10, 35, 36, RAYWHITE);
-    DrawText(FMT("CA Iterations: {}. (-, =)", CAiterations), 10, 75, 36, RAYWHITE);
-    DrawText(FMT("Seed: {}. (o, p)", seed), 10, 115, 36, RAYWHITE);
-    DrawText(FMT("Grid Length: {}. (l, k)", gridLength), 10, 155, 36, RAYWHITE);
+    // A small pool of masks with ~12.5% density (8/64 bits set)
+    const std::vector<uint64_t> caveMasks = GenerateSparseMasks(20, 48, seed + 12345);
 
-    static Timer SettingsChangeTimer(0.25);
+    for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
+    for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
+    {
+        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
 
-    // Increase, decrease grid length
-    if (IsKeyPressed(KEY_L))
-    {
-        if(SettingsChangeTimer.HasElapsed()) 
+        for (uint64_t x = 0; x < 64; ++x) 
         {
-            gridLength++;
-            RefreshCaveNoise();
-            return;
+            const uint64_t noise = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
+            chunk[x] = noise;// & caveMasks[(noise >> 32) % caveMasks.size()];
         }
-    }
-    else if (IsKeyPressed(KEY_K))
-    {
-        if(SettingsChangeTimer.HasElapsed())
-            if (gridLength >= 2)
-            {
-                gridLength--;
-                RefreshCaveNoise();
-                return;
-            }
-    }
-
-    // Increase, decrease seed
-    else if (IsKeyPressed(KEY_P))
-    {
-        if(SettingsChangeTimer.HasElapsed()) 
-        {
-            seed++;
-            RefreshCaveNoise();
-            return;
-        }
-    }
-    else if (IsKeyPressed(KEY_O))
-    {
-        if(SettingsChangeTimer.HasElapsed())
-        {
-            seed--;
-            RefreshCaveNoise();
-            return;
-        }
-    }
-
-    // Increase, decrease iterations
-    else if (IsKeyPressed(KEY_EQUAL))
-    {
-        if(SettingsChangeTimer.HasElapsed()) 
-        {
-            CAiterations++;
-            RefreshCaveNoise();
-            return;
-        }
-    }
-    else if (IsKeyPressed(KEY_MINUS))
-    {
-        if(SettingsChangeTimer.HasElapsed())
-            if (CAiterations >= 1)
-            {
-                CAiterations--;
-                RefreshCaveNoise();
-                return;
-            }
     }
 }
 
@@ -282,7 +296,7 @@ void Grid::DrawGrid()
         for (int localX = 0; localX < tilesInChunkAxis; ++localX) 
         for (int localZ = 0; localZ < tilesInChunkAxis; ++localZ) 
         { 
-            const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 1; 
+            const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 0; 
             Color tileColor = isWall ? BLACK : WHITE; 
             
             int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize;

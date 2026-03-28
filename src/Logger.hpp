@@ -107,6 +107,13 @@ namespace debug
         return oss.str();
     }
 
+    inline std::string str(const double number, const int precision)
+    {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(5) << number;
+        return oss.str();
+    }
+
     inline std::string str(const int number)
     {
         std::ostringstream oss;

@@ -5,8 +5,18 @@ project(MyRaylibGame CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Fetch raylib
 include(FetchContent)
+
+# Fetch glm
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.1  # Use a specific version tag
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glm)
+
+# Fetch raylib
 set(FETCHCONTENT_QUIET FALSE)  # So you see progress
 
 FetchContent_Declare(
@@ -16,19 +26,25 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_Declare(
-    glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.1  # Use a specific version tag
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(glm)
-
 # Build raylib as static lib (recommended)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(raylib)
+
+# Fetch FastNoise2
+FetchContent_Declare(
+    FastNoise2
+    GIT_REPOSITORY https://github.com/Auburn/FastNoise2.git
+    GIT_TAG        master # Use a stable tag or "master"
+    GIT_SHALLOW    TRUE
+)
+
+# Disable FastNoise2's internal testing and tool builds to save time
+set(FASTNOISE2_NO_TESTS ON CACHE BOOL "" FORCE)
+set(FASTNOISE2_NO_TOOLS ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(FastNoise2)
 
 # Your executable
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -36,7 +52,7 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "${SRC_DIR}/*.cpp")
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 # Link raylib
-target_link_libraries(${PROJECT_NAME} PRIVATE raylib glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE raylib glm FastNoise2)
 
 # Platform-specific dependencies (very important!)
 if(APPLE)
