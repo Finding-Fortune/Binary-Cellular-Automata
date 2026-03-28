@@ -3,7 +3,6 @@
 #include "Logger.hpp"
 #include "Timer.hpp"
 
-#include "raylib.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/bitfield.hpp>
 
@@ -27,6 +26,8 @@ uint64_t Grid::SpatialHash(uint64_t x, uint64_t z)
 
 Grid::Grid()
 {
+    stoneTexture = LoadTexture("resources/Stone.png");
+
     RefreshCaveNoise();
 }
 
@@ -48,69 +49,6 @@ void Grid::RefreshCaveNoise()
         {
             CaveCA(chunkCoordX, chunkCoordZ);
         }
-    }
-}
-
-
-
-void Grid::CaveCAIsolated(const int chunkCoordX, const int chunkCoordZ) 
-{
-    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
-    uint64_t temp[64] = {0};
-
-    for (int x = 0; x < 64; ++x) 
-    {
-        const uint64_t L = (x > 0)   ? chunk[x-1] : ~0ULL;  // border = solid walls
-        const uint64_t C = chunk[x];
-        const uint64_t R = (x < 63)  ? chunk[x+1] : ~0ULL;
-
-        // 8 neighbor masks + self (standard Moore neighborhood, 9 cells total).
-        // Shifts handle vertical neighbors; border walls are injected with OR.
-        const uint64_t upper_border = 1ULL;           // LSB (y=0) up-neighbor = wall
-        const uint64_t lower_border = 1ULL << 63;     // MSB (y=63) down-neighbor = wall
-
-        const uint64_t up_left   = (L << 1) | upper_border;
-        const uint64_t up        = (C << 1) | upper_border;
-        const uint64_t up_right  = (R << 1) | upper_border;
-        const uint64_t left      = L;
-        const uint64_t right     = R;
-        const uint64_t down_left = (L >> 1) | lower_border;
-        const uint64_t down      = (C >> 1) | lower_border;
-        const uint64_t down_right= (R >> 1) | lower_border;
-
-        // 4-bit counter planes (b0 = LSB ... b3 = 8's place). Enough for 0-15.
-        uint64_t count[4] = {0};
-
-        // Add each of the 9 neighbor bits into the parallel counter using ripple-carry
-        // (pure & ^ |, sequential only inside the 4-bit width — exactly the "sequential"
-        // part you mentioned, but still fully bit-parallel across all 64 rows).
-        const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
-        for (int i = 0; i < 9; ++i) 
-        {
-            uint64_t carry = neighbors[i];
-            for (int b = 0; b < 4; ++b) 
-            {
-                uint64_t sum  = count[b] ^ carry;
-                carry         = count[b] & carry;
-                count[b]      = sum;
-                if (carry == 0) break;   // early-out when no more carry
-            }
-        }
-
-        // Extract >=5 from the 4-bit count (exact match to the classic rule).
-        const uint64_t b0 = count[0];  // 1's
-        const uint64_t b1 = count[1];  // 2's
-        const uint64_t b2 = count[2];  // 4's
-        const uint64_t b3 = count[3];  // 8's
-        const uint64_t ge5 = b3 | (b2 & (b1 | b0));
-
-        temp[x] = ge5;
-    }
-
-    // Write back (or use pointer swap in real engine code).
-    for (int x = 0; x < 64; ++x) 
-    {
-        chunk[x] = temp[x];
     }
 }
 
@@ -211,9 +149,8 @@ void Grid::CaveCA(const int chunkCoordX, const int chunkCoordZ)
         const uint64_t b1 = count[1];
         const uint64_t b2 = count[2];
         const uint64_t b3 = count[3];
-        const uint64_t ge5 = b3 | (b2 & (b1 | b0));
-
-        temp[x] = ge5;
+        temp[x] = b3 | (b2 & b1);
+        // temp[x] = ~temp[x];
     }
 
     for (int x = 0; x < 64; ++x) 
@@ -232,9 +169,14 @@ void Grid::InitCaveNoise()
         std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
         for (uint64_t x = 0; x < 64; ++x) 
         {
-            // chunk[x] = SpatialHash(x + 64 * chunkCoordX, 64 * chunkCoordZ);
-            // chunk[x] = SpatialHash(x + chunkCoordX, chunkCoordZ * 64);
-            chunk[x] = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
+            // uint64_t hash = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
+            // chunk[x] = hash;
+
+            uint64_t h1 = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
+            uint64_t h2 = SpatialHash(x + 410 + chunkCoordX * 64, x + 420 - chunkCoordZ * 64);
+            uint64_t h3 = SpatialHash(x - 430 + chunkCoordX * 64, x - 940 - chunkCoordZ * 64);
+
+            chunk[x] = h1 | (h2 & h3);
         }
     }
 }
@@ -243,9 +185,10 @@ void Grid::InitCaveNoise()
 
 void Grid::DrawGridDebug()
 {
-    DrawText(FMT("CA Iterations: {}", CAiterations), 10, 35, 36, RAYWHITE);
-    DrawText(FMT("Seed: {}", seed), 10, 75, 36, RAYWHITE);
-    DrawText(FMT("Grid Length: {}", gridLength), 10, 105, 36, RAYWHITE);
+    DrawText("Walls are Black", 10, 35, 36, RAYWHITE);
+    DrawText(FMT("CA Iterations: {}. (-, =)", CAiterations), 10, 75, 36, RAYWHITE);
+    DrawText(FMT("Seed: {}. (o, p)", seed), 10, 115, 36, RAYWHITE);
+    DrawText(FMT("Grid Length: {}. (l, k)", gridLength), 10, 155, 36, RAYWHITE);
 
     static Timer SettingsChangeTimer(0.25);
 
@@ -346,7 +289,13 @@ void Grid::DrawGrid()
             int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize;
             
             int drawSize = tileGap ? tileSize - 1 : tileSize;
-            DrawRectangle(screenX, screenY, drawSize, drawSize, tileColor); 
+            if(isWall)
+            {
+                Rectangle source = { 0.0f, 0.0f, (float)stoneTexture.width, (float)stoneTexture.height };
+                Rectangle dest = { (float)screenX, (float)screenY, (float)drawSize, (float)drawSize };
+                DrawTexturePro(stoneTexture, source, dest, { 0, 0 }, 0.0f, WHITE);
+            }
+            else DrawRectangle(screenX, screenY, drawSize, drawSize, tileColor); 
         } 
     } 
 }

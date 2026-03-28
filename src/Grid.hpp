@@ -1,5 +1,6 @@
 #pragma once
 
+#include "raylib.h"
 #include <cstdint>
 #include <array>
 #include <vector>
@@ -18,13 +19,14 @@ public:
     void RefreshCaveNoise();
 
     void CaveCA(const int chunkCoordX, const int chunkCoordZ);
-    void CaveCAIsolated(const int chunkCoordX, const int chunkCoordZ);
     
     void DrawGridDebug();
 
     static constexpr int tilesInChunkAxis = 64;
 
-    int gridLength = 4;
+    int gridLength = 3;
+    float initialWallDensity = 0.95f;
+    int CAthreshold = 6;
 
     std::vector<std::vector<std::array<uint64_t, 64>>> grid;
 
@@ -33,4 +35,6 @@ public:
 
 private:
     uint64_t SpatialHash(uint64_t x, uint64_t z);
+
+    Texture2D stoneTexture;
 };
