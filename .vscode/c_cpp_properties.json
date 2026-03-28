@@ -1,0 +1,12 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "Linux / GCC (via compile_commands)",
+      "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+      "intelliSenseMode": "linux-gcc-x64",   // adjust for your compiler
+      "cStandard": "c17",
+      "cppStandard": "c++20"
+    }
+  ]
+}
