@@ -1,0 +1,17 @@
+*.pdb
+*.ilk
+app.ld_9QTbHM
+.vs
+.vs/
+*.aps
+*.o
+*.d
+resource.aps
+resource.aps/
+app.*/*
+app.*/
+build/*
+build/
+bin/debug/debug.log
+bin/debug/Compile.log
+bin/screenshots/*
