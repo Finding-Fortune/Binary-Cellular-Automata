@@ -57,6 +57,8 @@ void Grid::RefreshCaveNoise()
             for (int i = 0; i < CAiterations; ++i)
             {
                 CaveCA(i, chunkCoordX, chunkCoordZ);
+                // CaveCAIsolated(i, chunkCoordX, chunkCoordZ);
+                // CaveCAIsolatedShrink(i, chunkCoordX, chunkCoordZ);
             }
         }
     }
@@ -70,16 +72,18 @@ void Grid::RefreshCaveNoise()
         // );
         auto simplex = FastNoise::New<FastNoise::Simplex>();
         std::vector<float> noiseBuffer(64 * 64);
-        static const float frequency = 20.1f;
+        static const float frequency = 10.1f;
 
         for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
         for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
         {
             std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+            const float xOffset = (float)(chunkCoordX * 64) * frequency;
+            const float zOffset = (float)(chunkCoordZ * 64) * frequency;
 
             simplex->GenUniformGrid2D(
                 noiseBuffer.data(),
-                (float)(chunkCoordX * 64), (float)(chunkCoordZ * 64), // Offsets
+                xOffset, zOffset, // Offsets
                 64, 64,                                              // Counts
                 frequency, frequency,                                // Step sizes (X and Y)
                 seed                                                 // Seed
@@ -106,6 +110,139 @@ void Grid::RefreshCaveNoise()
     double endTime = GetTime();
     generationTime = endTime - startTime;
 }
+
+
+
+void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
+{
+    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+    uint64_t temp[64] = {0};
+
+    for (int x = 0; x < 64; ++x) 
+    {
+        const uint64_t L = (x > 0)   ? chunk[x-1] : ~0ULL;  // border = solid walls
+        const uint64_t C = chunk[x];
+        const uint64_t R = (x < 63)  ? chunk[x+1] : ~0ULL;
+
+        // 8 neighbor masks + self (standard Moore neighborhood, 9 cells total).
+        // Shifts handle vertical neighbors; border walls are injected with OR.
+        const uint64_t upper_border = 1ULL;           // LSB (y=0) up-neighbor = wall
+        const uint64_t lower_border = 1ULL << 63;     // MSB (y=63) down-neighbor = wall
+
+        const uint64_t up_left   = (L << 1) | upper_border;
+        const uint64_t up        = (C << 1) | upper_border;
+        const uint64_t up_right  = (R << 1) | upper_border;
+        const uint64_t left      = L;
+        const uint64_t right     = R;
+        const uint64_t down_left = (L >> 1) | lower_border;
+        const uint64_t down      = (C >> 1) | lower_border;
+        const uint64_t down_right= (R >> 1) | lower_border;
+
+        // 4-bit counter planes (b0 = LSB ... b3 = 8's place). Enough for 0-15.
+        uint64_t count[4] = {0};
+
+        // Add each of the 9 neighbor bits into the parallel counter using ripple-carry
+        // (pure & ^ |, sequential only inside the 4-bit width — exactly the "sequential"
+        // part you mentioned, but still fully bit-parallel across all 64 rows).
+        const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
+        for (int i = 0; i < 9; ++i) 
+        {
+            uint64_t carry = neighbors[i];
+            for (int b = 0; b < 4; ++b) 
+            {
+                uint64_t sum  = count[b] ^ carry;
+                carry         = count[b] & carry;
+                count[b]      = sum;
+                if (carry == 0) break;   // early-out when no more carry
+            }
+        }
+
+        // Extract >=5 from the 4-bit count (exact match to the classic rule).
+        const uint64_t b0 = count[0];  // 1's
+        const uint64_t b1 = count[1];  // 2's
+        const uint64_t b2 = count[2];  // 4's
+        const uint64_t b3 = count[3];  // 8's
+        const uint64_t ge5 = b3 | (b2 & (b1 | b0));
+
+        temp[x] = ge5;
+    }
+
+    // Write back (or use pointer swap in real engine code).
+    for (int x = 0; x < 64; ++x) 
+    {
+        chunk[x] = temp[x];
+    }
+}
+void Grid::CaveCAIsolatedShrink(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
+{
+    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+    uint64_t temp[64] = {0};
+
+    // Calculate the safe inner region for this iteration
+    // First iteration (iteration == 0) -> full 0..63
+    // Later iterations shrink by 1 on each side per extra iteration
+    int shrink = iteration;                    // 0 for first pass, 1 for second, 2 for third, etc.
+    int start = shrink;
+    int end   = 64 - shrink;                   // exclusive
+
+    for (int x = start; x < end; ++x) 
+    {
+        // Use real neighbor data from within this chunk for inner cells
+        // For the very edge of the *current* inner region, we still use solid border
+        const uint64_t L = (x > 0)     ? chunk[x-1] : ~0ULL;
+        const uint64_t C = chunk[x];
+        const uint64_t R = (x < 63)    ? chunk[x+1] : ~0ULL;
+
+        const uint64_t upper_border = 1ULL;           // solid wall above
+        const uint64_t lower_border = 1ULL << 63;     // solid wall below
+
+        const uint64_t up_left   = (L << 1) | upper_border;
+        const uint64_t up        = (C << 1) | upper_border;
+        const uint64_t up_right  = (R << 1) | upper_border;
+
+        const uint64_t left      = L;
+        const uint64_t right     = R;
+
+        const uint64_t down_left = (L >> 1) | lower_border;
+        const uint64_t down      = (C >> 1) | lower_border;
+        const uint64_t down_right= (R >> 1) | lower_border;
+
+        uint64_t count[4] = {0};
+
+        const uint64_t neighbors[9] = { 
+            up_left, up, up_right, 
+            left, C, right, 
+            down_left, down, down_right 
+        };
+
+        for (int i = 0; i < 9; ++i) 
+        {
+            uint64_t carry = neighbors[i];
+            for (int b = 0; b < 4; ++b) 
+            {
+                uint64_t sum  = count[b] ^ carry;
+                carry         = count[b] & carry;
+                count[b]      = sum;
+                if (carry == 0) break;
+            }
+        }
+
+        const uint64_t b0 = count[0];
+        const uint64_t b1 = count[1];
+        const uint64_t b2 = count[2];
+        const uint64_t b3 = count[3];
+        const uint64_t ge5 = b3 | (b2 & (b1 | b0));
+
+        temp[x] = ge5;
+    }
+
+    // Write back ONLY the region we updated this iteration
+    for (int x = start; x < end; ++x) 
+    {
+        chunk[x] = temp[x];
+    }
+}
+
 
 
 
@@ -223,16 +360,19 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
 
 
-static std::vector<uint64_t> GenerateSparseMasks(int count, int activeBits, uint64_t seed) {
+static std::vector<uint64_t> GenerateSparseMasks(int count, int activeBits, uint64_t seed) 
+{
     std::vector<uint64_t> masks;
     std::mt19937_64 rng(seed);
     
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < count; ++i) 
+    {
         int positions[64];
         for (int j = 0; j < 64; ++j) positions[j] = j;
         
         // Fisher-Yates shuffle to pick random bit indices
-        for (int j = 63; j > 0; --j) {
+        for (int j = 63; j > 0; --j) 
+        {
             std::uniform_int_distribution<int> dist(0, j);
             int k = dist(rng);
             int temp = positions[j];
@@ -254,7 +394,7 @@ static std::vector<uint64_t> GenerateSparseMasks(int count, int activeBits, uint
 void Grid::InitCaveNoise() 
 {
     // A small pool of masks with ~12.5% density (8/64 bits set)
-    const std::vector<uint64_t> caveMasks = GenerateSparseMasks(20, 48, seed + 12345);
+    const std::vector<uint64_t> caveMasks = GenerateSparseMasks(20, 54, seed + 12345);
 
     for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
     for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
@@ -263,8 +403,11 @@ void Grid::InitCaveNoise()
 
         for (uint64_t x = 0; x < 64; ++x) 
         {
-            const uint64_t noise = SpatialHash(x + chunkCoordX * 64, chunkCoordZ * 64);
-            chunk[x] = noise;// & caveMasks[(noise >> 32) % caveMasks.size()];
+            const uint64_t worldX = chunkCoordX * 64 + x;
+            const uint64_t worldZ = chunkCoordZ * 64;
+
+            const uint64_t noise = SpatialHash(worldX, worldZ);
+            chunk[x] = noise;
         }
     }
 }
@@ -273,7 +416,6 @@ void Grid::InitCaveNoise()
 
 void Grid::DrawGrid() 
 { 
-    const int tilesInChunkAxis = 64; 
     const int gap = 2;
     const bool tileGap = false;
     
@@ -293,14 +435,15 @@ void Grid::DrawGrid()
     { 
         std::array<uint64_t, 64>& chunk = grid[cx][cz]; 
 
-        for (int localX = 0; localX < tilesInChunkAxis; ++localX) 
-        for (int localZ = 0; localZ < tilesInChunkAxis; ++localZ) 
-        { 
+        // for (int localX = 1; localX < 63; ++localX) 
+        // for (int localZ = 1; localZ < 63; ++localZ) 
+        for (int localX = 0; localX < 64; ++localX) 
+        for (int localZ = 0; localZ < 64; ++localZ) 
+        {  
             const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 0; 
-            Color tileColor = isWall ? BLACK : WHITE; 
             
-            int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize;
-            int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize;
+            int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize - cx;
+            int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize - cz;
             
             int drawSize = tileGap ? tileSize - 1 : tileSize;
             if(isWall)
@@ -309,7 +452,7 @@ void Grid::DrawGrid()
                 Rectangle dest = { (float)screenX, (float)screenY, (float)drawSize, (float)drawSize };
                 DrawTexturePro(stoneTexture, source, dest, { 0, 0 }, 0.0f, WHITE);
             }
-            else DrawRectangle(screenX, screenY, drawSize, drawSize, tileColor); 
+            else DrawRectangle(screenX, screenY, drawSize, drawSize, WHITE); 
         } 
     } 
 }

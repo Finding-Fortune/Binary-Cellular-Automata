@@ -1,6 +1,6 @@
 @echo off
 
-:: Check if the build directory exists; if not, create it
+REM Check if the build directory exists; if not, create it
 if not exist build (
     mkdir build
     cd build 
@@ -16,10 +16,8 @@ if not exist build (
     cd ..
 )
 
-REM Run CMake with the appropriate build type
+REM Run CMake with 6 threads
 cmake --build build --target MyRaylibGame -j6  
-@REM powershell -NoProfile -ExecutionPolicy Bypass -Command "$log='bin\\debug\\Compile.log'; $header='=== Build Output (' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + \") ===`n`n\"; $filtered = @(); cmake --build build --target MyRaylibGame -j6 2>&1 | ForEach-Object { Write-Host $_; if (-not ($_ -match '^ccache ' -or $_ -match '^clang\+\+ ' -or $_ -match '^[A-Z]:\\\\PROGRA~' -or $_ -match '\\.exe ' -or $_.Trim() -eq '')) { $filtered += $_ } }; $body = if ($filtered) { $filtered -join \"`n\" } else { 'Build succeeded - no warnings or errors.' }; \"$header$body`n\" | Set-Content -Path $log -Encoding utf8 -Force; exit $LASTEXITCODE"
-
 
 if %errorlevel% neq 0 (
     echo Errors detected in build. Exiting.
