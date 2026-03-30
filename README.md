@@ -5,10 +5,12 @@ massive performance speed-up over the traditional algorithm.
 
 Normally when generating caves in a voxel game, you generate a float of noise for every single voxel, 
 and check if noiseValue > threshold. If so then its set to Air to make a cave. However, this repo
-uses columns of uint64_t, and sets each column in a chunk to a random hash. Then the CA algorithm
+uses columns of uint64_t, and sets each column in a chunk[^1] to a random hash. Then the CA algorithm
 is applied over multiple iterations with binary neighbor comparisons to get a smooth coherent noise.
 To apply the cave noise, you simply read if each bit in the uint64_t is 1 or 0, instead of a threshold check.
 The result, is you can have cross-chunk cave noise generation at an order of magnitude faster than existing algorithms.
+
+[^1]: Each chunk is made up of 64 uint64_t, for a total of 64x64 bits. 
 
 ## Performance Comparison
 
