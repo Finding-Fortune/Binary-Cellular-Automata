@@ -25,6 +25,8 @@ Below is a comparison between this **Binary CA** implementation and **FastNoise2
 
 ## Images
 
+Visualization is powered by **[raylib](https://www.raylib.com/)**
+
 ![Binary CA with 3 iterations](bin/images/CA_iter3.png)
 
 ## Quick Start
