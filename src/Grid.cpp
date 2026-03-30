@@ -58,7 +58,6 @@ void Grid::RefreshCaveNoise()
             {
                 CaveCA(i, chunkCoordX, chunkCoordZ);
                 // CaveCAIsolated(i, chunkCoordX, chunkCoordZ);
-                // CaveCAIsolatedShrink(i, chunkCoordX, chunkCoordZ);
             }
         }
     }
@@ -173,75 +172,6 @@ void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int 
         chunk[x] = temp[x];
     }
 }
-void Grid::CaveCAIsolatedShrink(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
-{
-    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
-    uint64_t temp[64] = {0};
-
-    // Calculate the safe inner region for this iteration
-    // First iteration (iteration == 0) -> full 0..63
-    // Later iterations shrink by 1 on each side per extra iteration
-    int shrink = iteration;                    // 0 for first pass, 1 for second, 2 for third, etc.
-    int start = shrink;
-    int end   = 64 - shrink;                   // exclusive
-
-    for (int x = start; x < end; ++x) 
-    {
-        // Use real neighbor data from within this chunk for inner cells
-        // For the very edge of the *current* inner region, we still use solid border
-        const uint64_t L = (x > 0)     ? chunk[x-1] : ~0ULL;
-        const uint64_t C = chunk[x];
-        const uint64_t R = (x < 63)    ? chunk[x+1] : ~0ULL;
-
-        const uint64_t upper_border = 1ULL;           // solid wall above
-        const uint64_t lower_border = 1ULL << 63;     // solid wall below
-
-        const uint64_t up_left   = (L << 1) | upper_border;
-        const uint64_t up        = (C << 1) | upper_border;
-        const uint64_t up_right  = (R << 1) | upper_border;
-
-        const uint64_t left      = L;
-        const uint64_t right     = R;
-
-        const uint64_t down_left = (L >> 1) | lower_border;
-        const uint64_t down      = (C >> 1) | lower_border;
-        const uint64_t down_right= (R >> 1) | lower_border;
-
-        uint64_t count[4] = {0};
-
-        const uint64_t neighbors[9] = { 
-            up_left, up, up_right, 
-            left, C, right, 
-            down_left, down, down_right 
-        };
-
-        for (int i = 0; i < 9; ++i) 
-        {
-            uint64_t carry = neighbors[i];
-            for (int b = 0; b < 4; ++b) 
-            {
-                uint64_t sum  = count[b] ^ carry;
-                carry         = count[b] & carry;
-                count[b]      = sum;
-                if (carry == 0) break;
-            }
-        }
-
-        const uint64_t b0 = count[0];
-        const uint64_t b1 = count[1];
-        const uint64_t b2 = count[2];
-        const uint64_t b3 = count[3];
-        const uint64_t ge5 = b3 | (b2 & (b1 | b0));
-
-        temp[x] = ge5;
-    }
-
-    // Write back ONLY the region we updated this iteration
-    for (int x = start; x < end; ++x) 
-    {
-        chunk[x] = temp[x];
-    }
-}
 
 
 
@@ -343,12 +273,11 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t b3 = count[3];
         temp[x] = b3 | (b2 & (b1 | b0));
 
+        // A few attempts at changing the final result depending on iteration
         // temp[x] = b3 | (b2 & b1 & b0);
-
         // bool even = (iteration % 2 == 0);
         // uint64_t ge5 = b3 | (b2 & (b1 | b0));
         // uint64_t ge6 = b3 | (b2 & b1);
-
         // temp[x] = even ? ge5 : ge6;
     }
 
@@ -360,42 +289,8 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
 
 
-static std::vector<uint64_t> GenerateSparseMasks(int count, int activeBits, uint64_t seed) 
-{
-    std::vector<uint64_t> masks;
-    std::mt19937_64 rng(seed);
-    
-    for (int i = 0; i < count; ++i) 
-    {
-        int positions[64];
-        for (int j = 0; j < 64; ++j) positions[j] = j;
-        
-        // Fisher-Yates shuffle to pick random bit indices
-        for (int j = 63; j > 0; --j) 
-        {
-            std::uniform_int_distribution<int> dist(0, j);
-            int k = dist(rng);
-            int temp = positions[j];
-            positions[j] = positions[k];
-            positions[k] = temp;
-        }
-        
-        uint64_t mask = 0;
-        for (int j = 0; j < activeBits; ++j) {
-            mask |= (1ULL << positions[j]);
-        }
-        masks.push_back(mask);
-    }
-    return masks;
-}
-
-
-
 void Grid::InitCaveNoise() 
 {
-    // A small pool of masks with ~12.5% density (8/64 bits set)
-    const std::vector<uint64_t> caveMasks = GenerateSparseMasks(20, 54, seed + 12345);
-
     for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
     for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
     {

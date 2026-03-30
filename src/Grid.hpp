@@ -21,8 +21,6 @@ public:
     void CaveCA(const int iteration, const int chunkCoordX, const int chunkCoordZ);
 
     void CaveCAIsolated(const int iteration, const int chunkCoordX, const int chunkCoordZ);
-
-    void CaveCAIsolatedShrink(const int iteration, const int chunkCoordX, const int chunkCoordZ);
     
     void DrawGridDebug();
 
@@ -33,7 +31,7 @@ public:
     std::vector<std::vector<std::array<uint64_t, 64>>> grid;
 
     int seed = 0;
-    int CAiterations = 2;
+    int CAiterations = 3;
 
     // If false render fastnoise2 caves
     bool renderCACaves = true;
