@@ -87,16 +87,14 @@ void Grid::RefreshCaveNoise()
                 frequency, frequency,                                // Step sizes (X and Y)
                 seed                                                 // Seed
             );
-            // Map noise to your bitmask
+            // Map noise to bitmask
             for (uint64_t x = 0; x < 64; ++x) 
             {
                 uint64_t columnMask = 0;
                 for (uint64_t z = 0; z < 64; ++z) 
                 {
-                    // Access buffer: index = z * width + x
                     float noiseVal = noiseBuffer[z * 64 + x];
 
-                    // Thresholding: If > 0.5, set the bit at height 'z'
                     if (noiseVal > 0.1f) {
                         columnMask |= (1ULL << z);
                     }
@@ -123,7 +121,7 @@ void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int 
         const uint64_t C = chunk[x];
         const uint64_t R = (x < 63)  ? chunk[x+1] : ~0ULL;
 
-        // 8 neighbor masks + self (standard Moore neighborhood, 9 cells total).
+        // 8 neighbor masks + self
         // Shifts handle vertical neighbors; border walls are injected with OR.
         const uint64_t upper_border = 1ULL;           // LSB (y=0) up-neighbor = wall
         const uint64_t lower_border = 1ULL << 63;     // MSB (y=63) down-neighbor = wall
@@ -141,8 +139,6 @@ void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int 
         uint64_t count[4] = {0};
 
         // Add each of the 9 neighbor bits into the parallel counter using ripple-carry
-        // (pure & ^ |, sequential only inside the 4-bit width — exactly the "sequential"
-        // part you mentioned, but still fully bit-parallel across all 64 rows).
         const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
         for (int i = 0; i < 9; ++i) 
         {
@@ -156,7 +152,7 @@ void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int 
             }
         }
 
-        // Extract >=5 from the 4-bit count (exact match to the classic rule).
+        // Extract >=5 from the 4-bit count
         const uint64_t b0 = count[0];  // 1's
         const uint64_t b1 = count[1];  // 2's
         const uint64_t b2 = count[2];  // 4's
@@ -181,13 +177,13 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
     std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
     uint64_t temp[64] = {0};
 
-    // ── Horizontal neighbor chunks (X direction) ──
+    // Horizontal neighbor chunks (X direction)
     const bool hasLeft  = (chunkCoordX > 0);
     const bool hasRight = (chunkCoordX < gridLength - 1);
     const std::array<uint64_t, 64>* leftChunk  = hasLeft  ? &grid[chunkCoordX - 1][chunkCoordZ] : nullptr;
     const std::array<uint64_t, 64>* rightChunk = hasRight ? &grid[chunkCoordX + 1][chunkCoordZ] : nullptr;
 
-    // ── Vertical neighbor chunks (Z direction) ──
+    // Vertical neighbor chunks (Z direction)
     const bool hasAbove = (chunkCoordZ > 0);
     const bool hasBelow = (chunkCoordZ < gridLength - 1);
     const std::array<uint64_t, 64>* aboveChunk = hasAbove ? &grid[chunkCoordX][chunkCoordZ - 1] : nullptr;
@@ -195,14 +191,14 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
     for (int x = 0; x < 64; ++x) 
     {
-        // ── Resolve the three columns in this row (seamless in X) ──
+        // Resolve the three columns in this row
         const uint64_t L = (x > 0)   ? chunk[x-1] :
                            (hasLeft  ? (*leftChunk)[63] : ~0ULL);
         const uint64_t C = chunk[x];
         const uint64_t R = (x < 63)  ? chunk[x+1] :
                            (hasRight ? (*rightChunk)[0]  : ~0ULL);
 
-        // ── Resolve the "above" versions of L, C, R (for Z seam) ──
+        // Resolve the "above" versions of L, C, R (for Z seam)
         uint64_t above_L = 0, above_C = 0, above_R = 0;
         if (hasAbove)
         {
@@ -216,7 +212,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
             else if (hasRight)            above_R = grid[chunkCoordX+1][aboveZ][0];
         }
 
-        // ── Resolve the "below" versions of L, C, R ──
+        // Resolve the "below" versions of L, C, R
         uint64_t below_L = 0, below_C = 0, below_R = 0;
         if (hasBelow)
         {
@@ -230,7 +226,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
             else if (hasRight)            below_R = grid[chunkCoordX+1][belowZ][0];
         }
 
-        // ── Vertical edge injects ──
+        // Vertical edge injects
         const uint64_t upper_inject_L = hasAbove ? (above_L >> 63) : 1ULL;   // 0 or 1 for LSB
         const uint64_t upper_inject_C = hasAbove ? (above_C >> 63) : 1ULL;
         const uint64_t upper_inject_R = hasAbove ? (above_R >> 63) : 1ULL;
@@ -239,7 +235,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t lower_inject_C = hasBelow ? ((below_C & 1ULL) << 63) : (1ULL << 63);
         const uint64_t lower_inject_R = hasBelow ? ((below_R & 1ULL) << 63) : (1ULL << 63);
 
-        // ── Build the 9 neighbor bitboards ──
+        // Build the neighbor bitboards
         const uint64_t up_left   = (L << 1) | upper_inject_L;
         const uint64_t up        = (C << 1) | upper_inject_C;
         const uint64_t up_right  = (R << 1) | upper_inject_R;
@@ -251,6 +247,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t down      = (C >> 1) | lower_inject_C;
         const uint64_t down_right= (R >> 1) | lower_inject_R;
 
+        // Get counts for neighbor comparisons
         uint64_t count[4] = {0};
         const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
         for (int i = 0; i < 9; ++i) 
