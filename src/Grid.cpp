@@ -211,7 +211,6 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
             if (x > 0)                    above_L = grid[chunkCoordX][aboveZ][x-1];
             else if (hasLeft)             above_L = grid[chunkCoordX-1][aboveZ][63];
-            // else outer border → stays 0 (wall handled later)
 
             if (x < 63)                   above_R = grid[chunkCoordX][aboveZ][x+1];
             else if (hasRight)            above_R = grid[chunkCoordX+1][aboveZ][0];
@@ -231,7 +230,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
             else if (hasRight)            below_R = grid[chunkCoordX+1][belowZ][0];
         }
 
-        // ── Vertical edge injects (replaces the old fixed borders) ──
+        // ── Vertical edge injects ──
         const uint64_t upper_inject_L = hasAbove ? (above_L >> 63) : 1ULL;   // 0 or 1 for LSB
         const uint64_t upper_inject_C = hasAbove ? (above_C >> 63) : 1ULL;
         const uint64_t upper_inject_R = hasAbove ? (above_R >> 63) : 1ULL;
@@ -240,7 +239,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t lower_inject_C = hasBelow ? ((below_C & 1ULL) << 63) : (1ULL << 63);
         const uint64_t lower_inject_R = hasBelow ? ((below_R & 1ULL) << 63) : (1ULL << 63);
 
-        // ── Build the 9 neighbor bitboards (now fully seamless in both axes) ──
+        // ── Build the 9 neighbor bitboards ──
         const uint64_t up_left   = (L << 1) | upper_inject_L;
         const uint64_t up        = (C << 1) | upper_inject_C;
         const uint64_t up_right  = (R << 1) | upper_inject_R;
@@ -252,7 +251,6 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t down      = (C >> 1) | lower_inject_C;
         const uint64_t down_right= (R >> 1) | lower_inject_R;
 
-        // ── The rest is unchanged (4-bit parallel counter + >=5 rule) ──
         uint64_t count[4] = {0};
         const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
         for (int i = 0; i < 9; ++i) 
