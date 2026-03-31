@@ -16,7 +16,7 @@ void Grid::DrawGridDebug()
             DrawText(FMT("Seed: {}. (o, p)", seed), 10 + dx, 75 + dy, 36, BLACK);
             DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10 + dx, 115 + dy, 36, BLACK);
             DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10 + dx, 155 + dy, 36, BLACK);
-            DrawText(FMT("Drawing {} caves", (renderCACaves == true ? "Custom" : "FastNoise2")), 10 + dx, 195 + dy, 36, BLACK);
+            DrawText(FMT("Drawing {} caves (u)", (renderCACaves == true ? "Custom" : "FastNoise2")), 10 + dx, 195 + dy, 36, BLACK);
             if(renderCACaves) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10 + dx, 235 + dy, 36, BLACK);
         }
 
@@ -24,7 +24,7 @@ void Grid::DrawGridDebug()
         DrawText(FMT("Seed: {}. (o, p)", seed), 10, 75, 36, RAYWHITE);
         DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10, 115, 36, RAYWHITE);
         DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10, 155, 36, RAYWHITE);
-        DrawText(FMT("Drawing {} caves", (renderCACaves == true ? "Custom" : "FastNoise2")), 10, 195, 36, RAYWHITE);
+        DrawText(FMT("Drawing {} caves (u)", (renderCACaves == true ? "Custom" : "FastNoise2")), 10, 195, 36, RAYWHITE);
         if(renderCACaves) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10, 235, 36, RAYWHITE);
     }
 

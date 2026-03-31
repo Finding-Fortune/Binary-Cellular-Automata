@@ -332,10 +332,10 @@ void Grid::DrawGrid()
         {  
             const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 0; 
             
-            int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize - cx;
-            int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize - cz;
+            const int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize - cx;
+            const int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize - cz;
             
-            int drawSize = tileGap ? tileSize - 1 : tileSize;
+            const int drawSize = tileGap ? tileSize - 1 : tileSize;
             if(isWall)
             {
                 Rectangle source = { 0.0f, 0.0f, (float)stoneTexture.width, (float)stoneTexture.height };
