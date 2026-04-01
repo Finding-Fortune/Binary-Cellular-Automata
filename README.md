@@ -39,8 +39,9 @@ git clone https://github.com/Finding-Fortune/Binary-Cellular-Automata.git
 cd Binary-Cellular-Automata
 
 # Build
-Building can be done through the .\Compile.bat file. Please adjust the cmake
-command there to properly build for your machine
+# Building can be done through the .\Compile.bat file. Please adjust the cmake
+# command there to properly build for your machine - by default Ninja and Clang++ is used
+.\Compile.bat
 
 # Run
 .\Run.bat
