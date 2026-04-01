@@ -1,5 +1,11 @@
 # Binary Cellular Automata for Cave Generation
 
+- [Performance Comparison](#performance-comparison)
+- [Images](#images)
+- [Quick Start](#quick-start)
+
+---
+
 This repo implements the Cellular Automata (CA) algorithm for cave generation in binary, for a 
 massive performance speed-up over the traditional algorithm. 
 
@@ -28,9 +34,7 @@ over 100 runs with different seeds:
 
 ## Images
 
-Visualization is powered by **[raylib](https://www.raylib.com/)**
-
-![Binary CA with 3 iterations](bin/images/CA_iter3.png)
+![Binary CA with 3 iterations](bin/images/CA_iter.png)
 
 ## Quick Start
 
