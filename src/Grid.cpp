@@ -22,9 +22,7 @@ Grid::Grid() : stoneTexture(LoadTexture("resources/Stone.png"))
 void Grid::RefreshCaves()
 {
     // Resize grid
-    grid.resize(gridLength);
-    for (int i = 0; i < gridLength; ++i) 
-        grid[i] = std::vector<std::array<uint64_t, 64>>(gridLength);
+    grid.resize(gridArea);
 
     // Time how long it takes to generate each cave
     const double startTime = GetTime();
@@ -65,7 +63,7 @@ void Grid::GenerateFN2Caves()
     for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
     for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
     {
-        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+        std::array<uint64_t, 64>& chunk = grid[GetChunkIndex(chunkCoordX, chunkCoordZ)];
         const float xOffset = (float)(chunkCoordX * 64) * frequency;
         const float zOffset = (float)(chunkCoordZ * 64) * frequency;
 
@@ -97,7 +95,7 @@ void Grid::GenerateFN2Caves()
 
 void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
 {
-    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+    std::array<uint64_t, 64>& chunk = grid[GetChunkIndex(chunkCoordX, chunkCoordZ)];
     uint64_t temp[64] = {0};
 
     for (int x = 0; x < 64; ++x) 
@@ -161,20 +159,20 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 {
     // In our grid, X is horizontal - Z is vertical. (0, 0) is top left of the render, x increasing to the right and z down
 
-    std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+    std::array<uint64_t, 64>& chunk = grid[GetChunkIndex(chunkCoordX, chunkCoordZ)];
     uint64_t temp[64] = {0};
 
     // Horizontal neighbor chunks (X direction)
     const bool hasLeft  = (chunkCoordX > 0);
     const bool hasRight = (chunkCoordX < gridLength - 1);
-    const std::array<uint64_t, 64>* leftChunk  = hasLeft  ? &grid[chunkCoordX - 1][chunkCoordZ] : nullptr;
-    const std::array<uint64_t, 64>* rightChunk = hasRight ? &grid[chunkCoordX + 1][chunkCoordZ] : nullptr;
+    const std::array<uint64_t, 64>* leftChunk  = hasLeft  ? &grid[GetChunkIndex(chunkCoordX - 1, chunkCoordZ)] : nullptr;
+    const std::array<uint64_t, 64>* rightChunk = hasRight ? &grid[GetChunkIndex(chunkCoordX + 1, chunkCoordZ)] : nullptr;
 
     // Vertical neighbor chunks (Z direction)
     const bool hasAbove = (chunkCoordZ > 0);
     const bool hasBelow = (chunkCoordZ < gridLength - 1);
-    const std::array<uint64_t, 64>* aboveChunk = hasAbove ? &grid[chunkCoordX][chunkCoordZ - 1] : nullptr;
-    const std::array<uint64_t, 64>* belowChunk = hasBelow ? &grid[chunkCoordX][chunkCoordZ + 1] : nullptr;
+    const std::array<uint64_t, 64>* aboveChunk = hasAbove ? &grid[GetChunkIndex(chunkCoordX, chunkCoordZ - 1)] : nullptr;
+    const std::array<uint64_t, 64>* belowChunk = hasBelow ? &grid[GetChunkIndex(chunkCoordX, chunkCoordZ + 1)] : nullptr;
 
     for (int x = 0; x < 64; ++x) 
     {
@@ -193,13 +191,13 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         if (hasAbove)
         {
             int aboveZ = chunkCoordZ - 1;
-            above_C = grid[chunkCoordX][aboveZ][x];
+            above_C = grid[GetChunkIndex(chunkCoordX, aboveZ)][x];
 
-            if (x > 0)                    above_L = grid[chunkCoordX][aboveZ][x-1];
-            else if (hasLeft)             above_L = grid[chunkCoordX-1][aboveZ][63];
+            if (x > 0)                    above_L = grid[GetChunkIndex(chunkCoordX, aboveZ)][x-1];
+            else if (hasLeft)             above_L = grid[GetChunkIndex(chunkCoordX-1, aboveZ)][63];
 
-            if (x < 63)                   above_R = grid[chunkCoordX][aboveZ][x+1];
-            else if (hasRight)            above_R = grid[chunkCoordX+1][aboveZ][0];
+            if (x < 63)                   above_R = grid[GetChunkIndex(chunkCoordX, aboveZ)][x+1];
+            else if (hasRight)            above_R = grid[GetChunkIndex(chunkCoordX+1, aboveZ)][0];
         }
 
         // Resolve the "below" versions of L, C, R
@@ -208,13 +206,13 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         if (hasBelow)
         {
             int belowZ = chunkCoordZ + 1;
-            below_C = grid[chunkCoordX][belowZ][x];
+            below_C = grid[GetChunkIndex(chunkCoordX, belowZ)][x];
 
-            if (x > 0)                    below_L = grid[chunkCoordX][belowZ][x-1];
-            else if (hasLeft)             below_L = grid[chunkCoordX-1][belowZ][63];
+            if (x > 0)                    below_L = grid[GetChunkIndex(chunkCoordX, belowZ)][x-1];
+            else if (hasLeft)             below_L = grid[GetChunkIndex(chunkCoordX - 1, belowZ)][63];
 
-            if (x < 63)                   below_R = grid[chunkCoordX][belowZ][x+1];
-            else if (hasRight)            below_R = grid[chunkCoordX+1][belowZ][0];
+            if (x < 63)                   below_R = grid[GetChunkIndex(chunkCoordX, belowZ)][x+1];
+            else if (hasRight)            below_R = grid[GetChunkIndex(chunkCoordX + 1, belowZ)][0];
         }
 
         // Vertical edge injects
@@ -300,7 +298,7 @@ void Grid::InitCaveNoise()
     for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
     for(uint64_t chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
     {
-        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+        std::array<uint64_t, 64>& chunk = grid[GetChunkIndex(chunkCoordX, chunkCoordZ)];
 
         for (uint64_t x = 0; x < 64; ++x) 
         {
@@ -311,6 +309,13 @@ void Grid::InitCaveNoise()
             chunk[x] = noise;
         }
     }
+}
+
+
+
+size_t Grid::GetChunkIndex(const int chunkCoordX, const int chunkCoordZ)
+{
+    return chunkCoordX + chunkCoordZ * gridLength;
 }
 
 

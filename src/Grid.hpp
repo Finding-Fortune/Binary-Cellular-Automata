@@ -36,9 +36,13 @@ private:
 
     uint64_t SpatialHash(const uint64_t x, const uint64_t z);
 
-    int gridLength = 3;
+    size_t GetChunkIndex(const int chunkCoordX, const int chunkCoordZ);
 
-    std::vector<std::vector<std::array<uint64_t, 64>>> grid;
+    int gridLength = 3;
+    int gridArea = gridLength * gridLength;
+
+    // std::vector<std::vector<std::array<uint64_t, 64>>> grid;
+    std::vector<std::array<uint64_t, 64>> grid;
 
     int seed = 0;
     int CAiterations = 3;

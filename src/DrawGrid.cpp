@@ -24,7 +24,7 @@ void Grid::DrawGrid()
     for(int cz = 0; cz < gridLength; ++cz) 
     for(int cx = 0; cx < gridLength; ++cx) 
     { 
-        std::array<uint64_t, 64>& chunk = grid[cx][cz]; 
+        std::array<uint64_t, 64>& chunk = grid[GetChunkIndex(cx, cz)]; 
 
         // for (int localX = 1; localX < 63; ++localX) 
         // for (int localZ = 1; localZ < 63; ++localZ) 
