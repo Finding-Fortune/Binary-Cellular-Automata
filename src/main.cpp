@@ -1,6 +1,6 @@
 #include "Grid.hpp"
 
-#include "Logger.hpp"
+#include "utility/Logger.hpp"
 
 #include "raylib.h"
 

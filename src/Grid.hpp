@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 
+#define CHUNK_AXIS_BITS 64
 
 
 class Grid
@@ -14,17 +15,22 @@ public:
 
     void DrawGrid();
 
+    void DrawGridDebug();
+
+private:
     void InitCaveNoise();
 
-    void RefreshCaveNoise();
+    void RefreshCaves();
 
     void CaveCA(const int iteration, const int chunkCoordX, const int chunkCoordZ);
 
     void CaveCAIsolated(const int iteration, const int chunkCoordX, const int chunkCoordZ);
-    
-    void DrawGridDebug();
 
-    static constexpr int tilesInChunkAxis = 64;
+    void GenerateCACaves();
+
+    void GenerateFN2Caves();
+
+    uint64_t SpatialHash(const uint64_t x, const uint64_t z);
 
     int gridLength = 3;
 
@@ -37,9 +43,6 @@ public:
     bool renderCACaves = true;
 
     double generationTime = 0.0;
-
-private:
-    uint64_t SpatialHash(uint64_t x, uint64_t z);
 
     Texture2D stoneTexture;
 };

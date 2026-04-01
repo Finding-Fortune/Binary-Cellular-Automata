@@ -1,7 +1,7 @@
 #include "Grid.hpp"
 
-#include "Logger.hpp"
-#include "Timer.hpp"
+#include "utility/Logger.hpp"
+#include "utility/Timer.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/bitfield.hpp>
@@ -12,11 +12,8 @@
 
 
 
-uint64_t Grid::SpatialHash(uint64_t x, uint64_t z) 
+uint64_t Grid::SpatialHash(const uint64_t x, const uint64_t z) 
 {
-    x += seed;
-    z += seed;
-
     uint64_t h = x + 0x9e3779b97f4a7c15ULL + (z << 6) + (z >> 2);
     
     h ^= z + 0x517cc1b727220a95ULL; 
@@ -32,80 +29,83 @@ Grid::Grid()
 {
     stoneTexture = LoadTexture("resources/Stone.png");
 
-    RefreshCaveNoise();
+    RefreshCaves();
 }
 
 
 
-void Grid::RefreshCaveNoise()
+void Grid::RefreshCaves()
 {
     // Resize grid
     grid.resize(gridLength);
     for (int i = 0; i < gridLength; ++i) 
         grid[i] = std::vector<std::array<uint64_t, 64>>(gridLength);
 
-    double startTime = GetTime();
+    // Time how long it takes to generate each cave
+    const double startTime = GetTime();
 
-    // Cellular Automata
-    if(renderCACaves)
-    {
-        InitCaveNoise();
+    // Generates our caves
+    if(renderCACaves) GenerateCACaves();
+    else GenerateFN2Caves();
 
-        for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
-        for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
-        {
-            for (int i = 0; i < CAiterations; ++i)
-            {
-                CaveCA(i, chunkCoordX, chunkCoordZ);
-                // CaveCAIsolated(i, chunkCoordX, chunkCoordZ);
-            }
-        }
-    }
-    // Fastnoise2
-    else 
-    {
-        InitCaveNoise();
-        
-        // static const auto noiseGen = FastNoise::NewFromEncodedNodeTree(
-        //     "EwCamZk+GgABEQACAAAAAADgQBAAAACIQR8AFgABAAAACwADAAAAAgAAAAMAAAAEAAAAAAAAAD8BFAD//wAAAAAAAD8AAAAAPwAAAAA/AAAAAD8BFwAAAIC/AACAPz0KF0BSuB5AEwAAAKBABgAAj8J1PACamZk+AAAAAAAA4XoUPw=="
-        // );
-        auto simplex = FastNoise::New<FastNoise::Simplex>();
-        std::vector<float> noiseBuffer(64 * 64);
-        static const float frequency = 10.1f;
-
-        for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
-        for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
-        {
-            std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
-            const float xOffset = (float)(chunkCoordX * 64) * frequency;
-            const float zOffset = (float)(chunkCoordZ * 64) * frequency;
-
-            simplex->GenUniformGrid2D(
-                noiseBuffer.data(),
-                xOffset, zOffset, // Offsets
-                64, 64,                                              // Counts
-                frequency, frequency,                                // Step sizes (X and Y)
-                seed                                                 // Seed
-            );
-            // Map noise to bitmask
-            for (uint64_t x = 0; x < 64; ++x) 
-            {
-                uint64_t columnMask = 0;
-                for (uint64_t z = 0; z < 64; ++z) 
-                {
-                    float noiseVal = noiseBuffer[z * 64 + x];
-
-                    if (noiseVal > 0.1f) {
-                        columnMask |= (1ULL << z);
-                    }
-                }
-                chunk[x] = columnMask;
-            }
-        }
-    }
-
-    double endTime = GetTime();
+    const double endTime = GetTime();
     generationTime = endTime - startTime;
+}
+
+
+
+void Grid::GenerateCACaves()
+{
+    InitCaveNoise();
+
+    for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
+    for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
+    {
+        for (int i = 0; i < CAiterations; ++i)
+        {
+            CaveCA(i, chunkCoordX, chunkCoordZ);
+            // CaveCAIsolated(i, chunkCoordX, chunkCoordZ);
+        }
+    }
+}
+
+
+
+void Grid::GenerateFN2Caves()
+{
+    auto simplex = FastNoise::New<FastNoise::Simplex>();
+    std::vector<float> noiseBuffer(64 * 64);
+    static const float frequency = 10.1f;
+
+    for(int chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
+    for(int chunkCoordZ = 0; chunkCoordZ < gridLength; ++chunkCoordZ)
+    {
+        std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
+        const float xOffset = (float)(chunkCoordX * 64) * frequency;
+        const float zOffset = (float)(chunkCoordZ * 64) * frequency;
+
+        simplex->GenUniformGrid2D(
+            noiseBuffer.data(),
+            xOffset, zOffset, // Offsets
+            64, 64,                                              // Counts
+            frequency, frequency,                                // Step sizes (X and Y)
+            seed                                                 // Seed
+        );
+        // Map noise to bitmask
+        for (uint64_t x = 0; x < 64; ++x) 
+        {
+            uint64_t columnMask = 0;
+            for (uint64_t z = 0; z < 64; ++z) 
+            {
+                float noiseVal = noiseBuffer[z * 64 + x];
+
+                if (noiseVal > 0.1f) {
+                    columnMask |= (1ULL << z);
+                }
+            }
+            chunk[x] = columnMask;
+        }
+    }
 }
 
 
@@ -174,6 +174,8 @@ void Grid::CaveCAIsolated(const int iteration, const int chunkCoordX, const int 
 
 void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoordZ) 
 {
+    // In our grid, X is horizontal - Z is vertical. (0, 0) is top left of the render, x increasing to the right and z down
+
     std::array<uint64_t, 64>& chunk = grid[chunkCoordX][chunkCoordZ];
     uint64_t temp[64] = {0};
 
@@ -191,7 +193,9 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
     for (int x = 0; x < 64; ++x) 
     {
-        // Resolve the three columns in this row
+        // Resolve the three columns in this row.
+        // L is the uint64_t column to the left. C is our current column. R is the uint64_t column to the right
+        // If no column exists (like we got to the end of our grid) we assume its a full column of walls (~0ULL means all bits set to 1)
         const uint64_t L = (x > 0)   ? chunk[x-1] :
                            (hasLeft  ? (*leftChunk)[63] : ~0ULL);
         const uint64_t C = chunk[x];
@@ -199,6 +203,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
                            (hasRight ? (*rightChunk)[0]  : ~0ULL);
 
         // Resolve the "above" versions of L, C, R (for Z seam)
+        // above_L is the diagonal left bit up, above_R the diagonal right bit up
         uint64_t above_L = 0, above_C = 0, above_R = 0;
         if (hasAbove)
         {
@@ -213,6 +218,7 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         }
 
         // Resolve the "below" versions of L, C, R
+        // below_L is the diagonal left bit down, below_R the diagonal right bit down
         uint64_t below_L = 0, below_C = 0, below_R = 0;
         if (hasBelow)
         {
@@ -227,11 +233,11 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         }
 
         // Vertical edge injects
-        const uint64_t upper_inject_L = hasAbove ? (above_L >> 63) : 1ULL;   // 0 or 1 for LSB
-        const uint64_t upper_inject_C = hasAbove ? (above_C >> 63) : 1ULL;
+        const uint64_t upper_inject_L = hasAbove ? (above_L >> 63) : 1ULL;   // 0 or 1 for Least Significant Bit (LSB)
+        const uint64_t upper_inject_C = hasAbove ? (above_C >> 63) : 1ULL; 
         const uint64_t upper_inject_R = hasAbove ? (above_R >> 63) : 1ULL;
 
-        const uint64_t lower_inject_L = hasBelow ? ((below_L & 1ULL) << 63) : (1ULL << 63);
+        const uint64_t lower_inject_L = hasBelow ? ((below_L & 1ULL) << 63) : (1ULL << 63); // Most Significant Bit (MSB)
         const uint64_t lower_inject_C = hasBelow ? ((below_C & 1ULL) << 63) : (1ULL << 63);
         const uint64_t lower_inject_R = hasBelow ? ((below_R & 1ULL) << 63) : (1ULL << 63);
 
@@ -247,26 +253,30 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
         const uint64_t down      = (C >> 1) | lower_inject_C;
         const uint64_t down_right= (R >> 1) | lower_inject_R;
 
-        // Get counts for neighbor comparisons
+        // Get counts for neighbor comparisons using a ripple carry
         uint64_t count[4] = {0};
         const uint64_t neighbors[9] = { up_left, up, up_right, left, C, right, down_left, down, down_right };
+        // Loop through all nine neighbor bits
         for (int i = 0; i < 9; ++i) 
         {
             uint64_t carry = neighbors[i];
+            // Loop through the four count bits to increment our counts
             for (int b = 0; b < 4; ++b) 
             {
-                uint64_t sum  = count[b] ^ carry;
-                carry         = count[b] & carry;
-                count[b]      = sum;
+                uint64_t sum = count[b] ^ carry; // ^ XOR checks if both bits are different (1 ^ 0 == 1, 1 ^ 1 == 0)
+                carry        = count[b] & carry;
+                count[b]     = sum;
                 if (carry == 0) break;
             }
         }
 
+        // Examples values for b3, b2, b1, b0 at a single bit
+        // If our neighbor count is 7, 0111 in binary, b3=0, b2=1, b3=1, b0=1
         const uint64_t b0 = count[0];
         const uint64_t b1 = count[1];
         const uint64_t b2 = count[2];
         const uint64_t b3 = count[3];
-        temp[x] = b3 | (b2 & (b1 | b0));
+        temp[x] = b3 | (b2 & (b1 | b0)); // This evaluates to 1 if the 4-bit number b3, b2, b1, b0 >= 5
 
         // A few attempts at changing the final result depending on iteration
         // temp[x] = b3 | (b2 & b1 & b0);
@@ -296,55 +306,10 @@ void Grid::InitCaveNoise()
             const uint64_t worldX = chunkCoordX * 64 + x;
             const uint64_t worldZ = chunkCoordZ * 64;
 
-            const uint64_t noise = SpatialHash(worldX, worldZ);
+            const uint64_t noise = SpatialHash(worldX + seed, worldZ + seed);
             chunk[x] = noise;
         }
     }
-}
-
-
-
-void Grid::DrawGrid() 
-{ 
-    const int gap = 2;
-    const bool tileGap = false;
-    
-    const int totalTilesAcross = tilesInChunkAxis * gridLength;
-    const int tileSize = (GetScreenHeight() - (gridLength * gap)) / totalTilesAcross;
-    
-    const int chunkPxSize = tilesInChunkAxis * tileSize;
-    
-    const int totalWidth  = gridLength  * (chunkPxSize + gap) - gap;
-    const int totalHeight = gridLength * (chunkPxSize + gap) - gap;
-    
-    const int startScreenX = (GetScreenWidth()  - totalWidth)  / 2;
-    const int startScreenY = (GetScreenHeight() - totalHeight) / 2;
-
-    for(int cz = 0; cz < gridLength; ++cz) 
-    for(int cx = 0; cx < gridLength; ++cx) 
-    { 
-        std::array<uint64_t, 64>& chunk = grid[cx][cz]; 
-
-        // for (int localX = 1; localX < 63; ++localX) 
-        // for (int localZ = 1; localZ < 63; ++localZ) 
-        for (int localX = 0; localX < 64; ++localX) 
-        for (int localZ = 0; localZ < 64; ++localZ) 
-        {  
-            const bool isWall = glm::bitfieldExtract(chunk[localX], localZ, 1) == 0; 
-            
-            const int screenX = startScreenX + cx * (chunkPxSize + gap) + localX * tileSize - cx;
-            const int screenY = startScreenY + cz * (chunkPxSize + gap) + localZ * tileSize - cz;
-            
-            const int drawSize = tileGap ? tileSize - 1 : tileSize;
-            if(isWall)
-            {
-                Rectangle source = { 0.0f, 0.0f, (float)stoneTexture.width, (float)stoneTexture.height };
-                Rectangle dest = { (float)screenX, (float)screenY, (float)drawSize, (float)drawSize };
-                DrawTexturePro(stoneTexture, source, dest, { 0, 0 }, 0.0f, WHITE);
-            }
-            else DrawRectangle(screenX, screenY, drawSize, drawSize, WHITE); 
-        } 
-    } 
 }
 
 

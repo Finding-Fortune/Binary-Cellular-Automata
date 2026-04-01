@@ -1,7 +1,7 @@
 #include "Grid.hpp"
 
-#include "Logger.hpp"
-#include "Timer.hpp"
+#include "utility/Logger.hpp"
+#include "utility/Timer.hpp"
 
 
 
@@ -36,7 +36,7 @@ void Grid::DrawGridDebug()
         if(SettingsChangeTimer.HasElapsed()) 
         {
             renderCACaves = !renderCACaves;
-            RefreshCaveNoise();
+            RefreshCaves();
             return;
         }
     }
@@ -46,7 +46,7 @@ void Grid::DrawGridDebug()
         if(SettingsChangeTimer.HasElapsed()) 
         {
             gridLength++;
-            RefreshCaveNoise();
+            RefreshCaves();
             return;
         }
     }
@@ -56,7 +56,7 @@ void Grid::DrawGridDebug()
             if (gridLength >= 2)
             {
                 gridLength--;
-                RefreshCaveNoise();
+                RefreshCaves();
                 return;
             }
     }
@@ -67,7 +67,7 @@ void Grid::DrawGridDebug()
         if(SettingsChangeTimer.HasElapsed()) 
         {
             seed++;
-            RefreshCaveNoise();
+            RefreshCaves();
             return;
         }
     }
@@ -76,7 +76,7 @@ void Grid::DrawGridDebug()
         if(SettingsChangeTimer.HasElapsed())
         {
             seed--;
-            RefreshCaveNoise();
+            RefreshCaves();
             return;
         }
     }
@@ -87,7 +87,7 @@ void Grid::DrawGridDebug()
         if(SettingsChangeTimer.HasElapsed()) 
         {
             CAiterations++;
-            RefreshCaveNoise();
+            RefreshCaves();
             return;
         }
     }
@@ -97,7 +97,7 @@ void Grid::DrawGridDebug()
             if (CAiterations >= 1)
             {
                 CAiterations--;
-                RefreshCaveNoise();
+                RefreshCaves();
                 return;
             }
     }
