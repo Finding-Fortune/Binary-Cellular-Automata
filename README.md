@@ -16,7 +16,7 @@ The result, is you can have cross-chunk cave noise generation at an order of mag
 
 Benchmarks were performed on an **AMD Ryzen 7 9800X3D**, and will be periodically updated as the library is optimized further.
 
-This comparison is between this **Binary CA** implementation and **FastNoise2**'s Simplex Node 
+The comparison is between this **Binary CA** implementation and **[FastNoise2](https://github.com/Auburn/FastNoise2)**'s Simplex Node 
 (a highly optimized noise library often used for procedural cave noise generation). Compiled with -O3, and averaged 
 over 100 runs with different seeds:
 
