@@ -12,23 +12,8 @@
 
 
 
-uint64_t Grid::SpatialHash(const uint64_t x, const uint64_t z) 
+Grid::Grid() : stoneTexture(LoadTexture("resources/Stone.png"))
 {
-    uint64_t h = x + 0x9e3779b97f4a7c15ULL + (z << 6) + (z >> 2);
-    
-    h ^= z + 0x517cc1b727220a95ULL; 
-    h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
-    h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
-    h = (h ^ (h >> 31));
-    return h;
-}
-
-
-
-Grid::Grid()
-{
-    stoneTexture = LoadTexture("resources/Stone.png");
-
     RefreshCaves();
 }
 
@@ -45,8 +30,8 @@ void Grid::RefreshCaves()
     const double startTime = GetTime();
 
     // Generates our caves
-    if(renderCACaves) GenerateCACaves();
-    else GenerateFN2Caves();
+    if(caveToGenerate == Caves::CA) GenerateCACaves();
+    else if(caveToGenerate == Caves::FN2) GenerateFN2Caves();
 
     const double endTime = GetTime();
     generationTime = endTime - startTime;
@@ -294,6 +279,22 @@ void Grid::CaveCA(const int iteration, const int chunkCoordX, const int chunkCoo
 
 
 
+uint64_t Grid::SpatialHash(uint64_t x, uint64_t z) 
+{
+    x += seed;
+    z += seed;
+
+    uint64_t h = x + 0x9e3779b97f4a7c15ULL + (z << 6) + (z >> 2);
+    
+    h ^= z + 0x517cc1b727220a95ULL; 
+    h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    h = (h ^ (h >> 27)) * 0x94d049bb133111ebULL;
+    h = (h ^ (h >> 31));
+    return h;
+}
+
+
+
 void Grid::InitCaveNoise() 
 {
     for(uint64_t chunkCoordX = 0; chunkCoordX < gridLength; ++chunkCoordX)
@@ -306,7 +307,7 @@ void Grid::InitCaveNoise()
             const uint64_t worldX = chunkCoordX * 64 + x;
             const uint64_t worldZ = chunkCoordZ * 64;
 
-            const uint64_t noise = SpatialHash(worldX + seed, worldZ + seed);
+            const uint64_t noise = SpatialHash(worldX, worldZ);
             chunk[x] = noise;
         }
     }

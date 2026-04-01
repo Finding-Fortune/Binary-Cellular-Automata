@@ -16,18 +16,25 @@ void Grid::DrawGridDebug()
             DrawText(FMT("Seed: {}. (o, p)", seed), 10 + dx, 75 + dy, 36, BLACK);
             DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10 + dx, 115 + dy, 36, BLACK);
             DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10 + dx, 155 + dy, 36, BLACK);
-            DrawText(FMT("Drawing {} caves (u)", (renderCACaves == true ? "Custom" : "FastNoise2")), 10 + dx, 195 + dy, 36, BLACK);
-            if(renderCACaves) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10 + dx, 235 + dy, 36, BLACK);
+            DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)), 10 + dx, 195 + dy, 36, BLACK);
+            if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10 + dx, 235 + dy, 36, BLACK);
         }
 
         DrawText(FMT("Generation Time: {}ms", STRP((generationTime * 1000.0), 2)), 10, 35, 36, RAYWHITE);
         DrawText(FMT("Seed: {}. (o, p)", seed), 10, 75, 36, RAYWHITE);
         DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10, 115, 36, RAYWHITE);
         DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10, 155, 36, RAYWHITE);
-        DrawText(FMT("Drawing {} caves (u)", (renderCACaves == true ? "Custom" : "FastNoise2")), 10, 195, 36, RAYWHITE);
-        if(renderCACaves) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10, 235, 36, RAYWHITE);
+        DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)), 10, 195, 36, RAYWHITE);
+        if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10, 235, 36, RAYWHITE);
     }
 
+    CheckSettingsChange();
+}
+
+
+
+void Grid::CheckSettingsChange()
+{
     static Timer SettingsChangeTimer(0.25);
 
     // Switch cave generation
@@ -35,7 +42,7 @@ void Grid::DrawGridDebug()
     {
         if(SettingsChangeTimer.HasElapsed()) 
         {
-            renderCACaves = !renderCACaves;
+            caveToGenerate = static_cast<Caves>((static_cast<int>(caveToGenerate) + 1) % static_cast<int>(Caves::Total_Caves));
             RefreshCaves();
             return;
         }
@@ -100,5 +107,18 @@ void Grid::DrawGridDebug()
                 RefreshCaves();
                 return;
             }
+    }
+}
+
+
+
+constexpr const char* Grid::ToSTR(const Caves cave)
+{
+    switch (cave)
+    {
+        case Caves::FN2:         return "FastNoise2";
+        case Caves::CA:          return "CA";
+        case Caves::Total_Caves: return "Total_Caves";
+        default:                 return "Unknown";
     }
 }

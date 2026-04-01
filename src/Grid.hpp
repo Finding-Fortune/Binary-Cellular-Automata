@@ -7,6 +7,8 @@
 
 #define CHUNK_AXIS_BITS 64
 
+enum class Caves;
+
 
 class Grid
 {
@@ -16,6 +18,8 @@ public:
     void DrawGrid();
 
     void DrawGridDebug();
+
+    void CheckSettingsChange();
 
 private:
     void InitCaveNoise();
@@ -39,10 +43,18 @@ private:
     int seed = 0;
     int CAiterations = 3;
 
-    // If false render fastnoise2 caves
-    bool renderCACaves = true;
+    // Which cave we want to generate
+    enum class Caves
+    {
+        FN2         = 0,
+        CA          = 1,
+        Total_Caves = 2
+    };
+    Caves caveToGenerate = Caves::CA;
+
+    static constexpr const char* ToSTR(const Caves cave);
 
     double generationTime = 0.0;
 
-    Texture2D stoneTexture;
+    const Texture2D stoneTexture;
 };
