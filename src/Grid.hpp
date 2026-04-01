@@ -62,4 +62,6 @@ private:
     double generationTime = 0.0;
 
     const Texture2D stoneTexture;
+
+    static constexpr int testRuns = 100;
 };

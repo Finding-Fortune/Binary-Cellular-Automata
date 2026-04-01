@@ -9,6 +9,7 @@
 #include <random>
 #include <numeric>
 #include "FastNoise/FastNoise.h"
+#include <chrono>
 
 
 
@@ -21,18 +22,26 @@ Grid::Grid() : stoneTexture(LoadTexture("resources/Stone.png"))
 
 void Grid::RefreshCaves()
 {
+    const int initialSeed = seed;
+
     // Resize grid
     grid.resize(gridArea);
 
     // Time how long it takes to generate each cave
-    const double startTime = GetTime();
+    const auto startTime = std::chrono::high_resolution_clock::now();
 
     // Generates our caves
-    if(caveToGenerate == Caves::CA) GenerateCACaves();
-    else if(caveToGenerate == Caves::FN2) GenerateFN2Caves();
+    for(int i = 0; i < testRuns; ++i)
+    {
+        seed += i;
+        if(caveToGenerate == Caves::CA) GenerateCACaves();
+        else if(caveToGenerate == Caves::FN2) GenerateFN2Caves();
+    }
 
-    const double endTime = GetTime();
-    generationTime = endTime - startTime;
+    const auto endTime = std::chrono::high_resolution_clock::now();
+    generationTime = std::chrono::duration<double, std::micro>(endTime - startTime).count() / testRuns;
+
+    seed = initialSeed;
 }
 
 
