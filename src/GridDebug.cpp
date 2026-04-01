@@ -18,28 +18,28 @@ void Grid::DrawGridDebug()
 
         if(dx || dy)
         {
-            DrawText(FMT("Avg Gen Time: {}us", STRP((generationTime), 2)),                        baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Runs per Test: {}", testRuns),                                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Base Seed: {}. (o, p)", seed),                                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                  baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Total Chunks: {}", gridArea),                                           baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                      baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
-            if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Avg Gen Time: {}us", STRP((generationTime), 2)),                           baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Runs per Test: {}", testRuns),                                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Base Seed: {}. (o, p)", seed),                                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                     baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Total Chunks: {}", gridArea),                                              baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                         baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
+            if(caveToGenerate == Caves::CA) DrawText(FMT("CA Iterations: {}. (-, =)", CAiterations), baseX, baseY + drawIndex++ * lineSpacing, fontSize, BLACK);
         }
 
         baseX = 10;
         baseY = 35;
         drawIndex = 0;
 
-        DrawText(FMT("Avg Gen Time: {}us", STRP((generationTime), 2)),                        baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Runs per Test: {}", testRuns),                                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Base Seed: {}. (o, p)", seed),                                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                  baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Total Chunks: {}", gridArea),                                           baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                      baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                          baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
-        if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Avg Gen Time: {}us", STRP((generationTime), 2)),                           baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Runs per Test: {}", testRuns),                                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Base Seed: {}. (o, p)", seed),                                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                     baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Total Chunks: {}", gridArea),                                              baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                         baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                             baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
+        if(caveToGenerate == Caves::CA) DrawText(FMT("CA Iterations: {}. (-, =)", CAiterations), baseX, baseY + drawIndex++ * lineSpacing, fontSize, RAYWHITE);
     }
 
     CheckSettingsChange();
