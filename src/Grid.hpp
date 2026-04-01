@@ -6,6 +6,7 @@
 #include <vector>
 
 #define CHUNK_AXIS_BITS 64
+#define CHUNK_AREA_BITS CHUNK_AXIS_BITS * CHUNK_AXIS_BITS
 
 enum class Caves;
 

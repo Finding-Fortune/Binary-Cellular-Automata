@@ -7,25 +7,35 @@
 
 void Grid::DrawGridDebug()
 {
-    for(int dx= -2; dx <= 2; dx++)
-    for(int dy= -2; dy <= 2; dy++)
+    for(int dx = -2; dx <= 2; dx++)
+    for(int dy = -2; dy <= 2; dy++)
     {
+        int baseX = 10 + dx;
+        int baseY = 35 + dy;
+        const int fontSize = 36;
+        const int lineSpacing = 40;
+
         if(dx || dy)
         {
-            DrawText(FMT("Generation Time: {}ms", STRP((generationTime * 1000.0), 2)), 10 + dx, 35 + dy, 36, BLACK);
-            DrawText(FMT("Seed: {}. (o, p)", seed), 10 + dx, 75 + dy, 36, BLACK);
-            DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10 + dx, 115 + dy, 36, BLACK);
-            DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10 + dx, 155 + dy, 36, BLACK);
-            DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)), 10 + dx, 195 + dy, 36, BLACK);
-            if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10 + dx, 235 + dy, 36, BLACK);
+            DrawText(FMT("Generation Time: {}ms", STRP((generationTime * 1000.0), 2)),            baseX, baseY + 0 * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Seed: {}. (o, p)", seed),                                               baseX, baseY + 1 * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                  baseX, baseY + 2 * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Total Chunks: {}", gridArea),                                           baseX, baseY + 3 * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                      baseX, baseY + 4 * lineSpacing, fontSize, BLACK);
+            DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                          baseX, baseY + 5 * lineSpacing, fontSize, BLACK);
+            if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), baseX, baseY + 6 * lineSpacing, fontSize, BLACK);
         }
 
-        DrawText(FMT("Generation Time: {}ms", STRP((generationTime * 1000.0), 2)), 10, 35, 36, RAYWHITE);
-        DrawText(FMT("Seed: {}. (o, p)", seed), 10, 75, 36, RAYWHITE);
-        DrawText(FMT("Grid Length: {}. (k, l)", gridLength), 10, 115, 36, RAYWHITE);
-        DrawText(FMT("Total Chunks: {}", gridLength * gridLength), 10, 155, 36, RAYWHITE);
-        DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)), 10, 195, 36, RAYWHITE);
-        if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), 10, 235, 36, RAYWHITE);
+        baseX = 10;
+        baseY = 35;
+
+        DrawText(FMT("Generation Time: {}ms", STRP((generationTime * 1000.0), 2)),            baseX, baseY + 0 * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Seed: {}. (o, p)", seed),                                               baseX, baseY + 1 * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Grid Length: {}. (k, l)", gridLength),                                  baseX, baseY + 2 * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Total Chunks: {}", gridArea),                                           baseX, baseY + 3 * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Points of Noise: {}", gridArea * CHUNK_AREA_BITS),                      baseX, baseY + 4 * lineSpacing, fontSize, RAYWHITE);
+        DrawText(FMT("Drawing {} caves (u)", ToSTR(caveToGenerate)),                          baseX, baseY + 5 * lineSpacing, fontSize, RAYWHITE);
+        if(caveToGenerate == Caves::CA) DrawText(FMT("Iterations: {}. (-, =)", CAiterations), baseX, baseY + 6 * lineSpacing, fontSize, RAYWHITE);
     }
 
     CheckSettingsChange();
@@ -53,6 +63,7 @@ void Grid::CheckSettingsChange()
         if(SettingsChangeTimer.HasElapsed()) 
         {
             gridLength++;
+            gridArea = gridLength * gridLength;
             RefreshCaves();
             return;
         }
@@ -63,6 +74,7 @@ void Grid::CheckSettingsChange()
             if (gridLength >= 2)
             {
                 gridLength--;
+                gridArea = gridLength * gridLength;
                 RefreshCaves();
                 return;
             }
